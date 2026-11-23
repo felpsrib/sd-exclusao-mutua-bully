@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cenário extra — eleições simultâneas</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f3ef; --surface: #fcfcfb; --texto: #0b0b0b; --texto2: #52514e; --mudo: #8a8984;
+  --grade: #e6e5e0; --raia: #b9b8b2; --rc: #008300; --coord: #6250d6; --falha: #e34948;
+  --m-REQUEST: #2a78d6;
+  --m-GRANT: #008300;
+  --m-RELEASE: #1baf7a;
+  --m-ELECTION: #eb6834;
+  --m-ANSWER: #eda100;
+  --m-COORDINATOR: #6250d6;
+  --m-ACK: #e87ba4;
+  --m-PING: #8a8984;
+  --m-PONG: #8a8984;
+  --c0: #2a78d6;
+  --c1: #eb6834;
+  --c2: #1baf7a;
+  --c3: #6250d6;
+  --c4: #e87ba4;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --texto: #f0efec; --texto2: #c3c2b7; --mudo: #8a897f;
+  --grade: #2e2d2a; --raia: #5f5e58; --rc: #2f9e2f; --coord: #9085e9; --falha: #e66767;
+  --m-REQUEST: #3987e5;
+  --m-GRANT: #2f9e2f;
+  --m-RELEASE: #199e70;
+  --m-ELECTION: #d95926;
+  --m-ANSWER: #c98500;
+  --m-COORDINATOR: #9085e9;
+  --m-ACK: #d55181;
+  --m-PING: #77766f;
+  --m-PONG: #77766f;
+  --c0: #3987e5;
+  --c1: #d95926;
+  --c2: #199e70;
+  --c3: #9085e9;
+  --c4: #d55181;
+} }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --texto: #f0efec; --texto2: #c3c2b7; --mudo: #8a897f;
+  --grade: #2e2d2a; --raia: #5f5e58; --rc: #2f9e2f; --coord: #9085e9; --falha: #e66767;
+  --m-REQUEST: #3987e5;
+  --m-GRANT: #2f9e2f;
+  --m-RELEASE: #199e70;
+  --m-ELECTION: #d95926;
+  --m-ANSWER: #c98500;
+  --m-COORDINATOR: #9085e9;
+  --m-ACK: #d55181;
+  --m-PING: #77766f;
+  --m-PONG: #77766f;
+  --c0: #3987e5;
+  --c1: #d95926;
+  --c2: #199e70;
+  --c3: #9085e9;
+  --c4: #d55181;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--texto);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1120px; margin: 0 auto; padding: 28px 16px 60px; }
+h1 { font-size: 1.6rem; margin: 0 0 4px; }
+h2 { font-size: 1.1rem; margin: 0 0 6px; }
+.sub { color: var(--texto2); margin: 0 0 22px; max-width: 75ch; }
+section { background: var(--surface); border-radius: 12px; padding: 18px 18px 14px;
+  margin-bottom: 18px; box-shadow: 0 1px 2px rgb(0 0 0 / .06); }
+section > p { color: var(--texto2); margin: 0 0 12px; font-size: .92rem; max-width: 80ch; }
+.rolagem { overflow-x: auto; }
+svg { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+svg.gantt { width: 100%; min-width: 640px; }
+svg.seq { min-width: 100%; }
+.grade { stroke: var(--grade); }
+.base { stroke: var(--grade); }
+.eixo, .tempo { fill: var(--mudo); font-size: 11px; }
+.rot, .cab { fill: var(--texto); font-size: 13px; font-weight: 600; }
+.rot-barra { fill: #fff; font-size: 11px; font-weight: 600; pointer-events: none; }
+.faixa-coord { fill: var(--coord); opacity: .55; }
+.falha path, .xis { stroke: var(--falha); stroke-width: 2.5; stroke-linecap: round; fill: none; }
+.marco { stroke: var(--texto2); stroke-dasharray: 3 4; }
+.raia { stroke: var(--raia); stroke-width: 1.5; }
+.raia-coord { stroke: var(--coord); stroke-width: 3.5; }
+.raia-rc { fill: var(--rc); }
+.seta { stroke-width: 2; fill: none; }
+.seta.falhou { stroke-dasharray: 5 4; opacity: .75; }
+.rot-msg { fill: var(--texto2); font-size: 10.5px; }
+.desc { fill: var(--texto2); font-size: 11px; }
+.ev { fill: var(--texto); font-size: 13px; }
+.ev-falha { fill: var(--falha); font-size: 14px; }
+.ev-coord { fill: var(--coord); font-size: 15px; }
+.nota { fill: var(--texto); font-size: 12px; font-weight: 700; font-family: system-ui, sans-serif; }
+.t-REQUEST { stroke: var(--m-REQUEST); } .ponta.t-REQUEST { fill: var(--m-REQUEST); stroke: none; }
+.t-GRANT { stroke: var(--m-GRANT); } .ponta.t-GRANT { fill: var(--m-GRANT); stroke: none; }
+.t-RELEASE { stroke: var(--m-RELEASE); } .ponta.t-RELEASE { fill: var(--m-RELEASE); stroke: none; }
+.t-ELECTION { stroke: var(--m-ELECTION); } .ponta.t-ELECTION { fill: var(--m-ELECTION); stroke: none; }
+.t-ANSWER { stroke: var(--m-ANSWER); } .ponta.t-ANSWER { fill: var(--m-ANSWER); stroke: none; }
+.t-COORDINATOR { stroke: var(--m-COORDINATOR); } .ponta.t-COORDINATOR { fill: var(--m-COORDINATOR); stroke: none; }
+.t-ACK { stroke: var(--m-ACK); } .ponta.t-ACK { fill: var(--m-ACK); stroke: none; }
+.t-PING { stroke: var(--m-PING); } .ponta.t-PING { fill: var(--m-PING); stroke: none; }
+.t-PONG { stroke: var(--m-PONG); } .ponta.t-PONG { fill: var(--m-PONG); stroke: none; }
+.rc.c0 { fill: var(--c0); } .leg-c0 { background: var(--c0); }
+.rc.c1 { fill: var(--c1); } .leg-c1 { background: var(--c1); }
+.rc.c2 { fill: var(--c2); } .leg-c2 { background: var(--c2); }
+.rc.c3 { fill: var(--c3); } .leg-c3 { background: var(--c3); }
+.rc.c4 { fill: var(--c4); } .leg-c4 { background: var(--c4); }
+.legenda { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .85rem; color: var(--texto2);
+  margin: 10px 0 0; padding: 0; list-style: none; }
+.legenda li { display: flex; align-items: center; gap: 6px; }
+.amostra { width: 16px; height: 10px; border-radius: 3px; display: inline-block; }
+.traco { width: 20px; height: 0; border-top: 2px solid; display: inline-block; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--grade); }
+th { color: var(--texto2); font-weight: 600; }
+td.num { font-variant-numeric: tabular-nums; }
+.veredito { font-weight: 600; }
+.veredito.ok { color: var(--rc); }
+.veredito.erro { color: var(--falha); }
+</style>
+</head>
+<body>
+<main>
+<h1>Cenário extra — eleições simultâneas</h1>
+<p class="sub">Várias eleições disparadas ao mesmo tempo convergem para um único vencedor: o maior ID vivo.</p>
+
+<section>
+<h2>1. Quem esteve na região crítica, e quando</h2>
+<p>Cada barra é um acesso à RC; a cor indica o coordenador que o autorizou. A faixa fina
+sob a linha mostra o período em que o processo se considerou coordenador; ✕ marca uma falha.
+Passe o mouse sobre as barras para ver os tempos.</p>
+<p class="veredito ok">✔ Nenhuma sobreposição: no máximo um processo esteve na RC em cada instante.</p>
+<div class="rolagem"><svg viewBox="0 0 956 230" class="gantt" role="img" aria-label="Linha do tempo da região crítica">
+<line x1="56.0" y1="20" x2="56.0" y2="202" class="grade"/>
+<text x="56.0" y="218" class="eixo" text-anchor="middle">0s</text>
+<line x1="132.5" y1="20" x2="132.5" y2="202" class="grade"/>
+<text x="132.5" y="218" class="eixo" text-anchor="middle">0.2s</text>
+<line x1="209.0" y1="20" x2="209.0" y2="202" class="grade"/>
+<text x="209.0" y="218" class="eixo" text-anchor="middle">0.4s</text>
+<line x1="285.4" y1="20" x2="285.4" y2="202" class="grade"/>
+<text x="285.4" y="218" class="eixo" text-anchor="middle">0.6s</text>
+<line x1="361.9" y1="20" x2="361.9" y2="202" class="grade"/>
+<text x="361.9" y="218" class="eixo" text-anchor="middle">0.8s</text>
+<line x1="438.4" y1="20" x2="438.4" y2="202" class="grade"/>
+<text x="438.4" y="218" class="eixo" text-anchor="middle">1s</text>
+<line x1="514.9" y1="20" x2="514.9" y2="202" class="grade"/>
+<text x="514.9" y="218" class="eixo" text-anchor="middle">1.2s</text>
+<line x1="591.4" y1="20" x2="591.4" y2="202" class="grade"/>
+<text x="591.4" y="218" class="eixo" text-anchor="middle">1.4s</text>
+<line x1="667.8" y1="20" x2="667.8" y2="202" class="grade"/>
+<text x="667.8" y="218" class="eixo" text-anchor="middle">1.6s</text>
+<line x1="744.3" y1="20" x2="744.3" y2="202" class="grade"/>
+<text x="744.3" y="218" class="eixo" text-anchor="middle">1.8s</text>
+<line x1="820.8" y1="20" x2="820.8" y2="202" class="grade"/>
+<text x="820.8" y="218" class="eixo" text-anchor="middle">2s</text>
+<line x1="897.3" y1="20" x2="897.3" y2="202" class="grade"/>
+<text x="897.3" y="218" class="eixo" text-anchor="middle">2.2s</text>
+<text x="44" y="47.0" class="rot" text-anchor="end">P1</text>
+<line x1="56" y1="59" x2="936" y2="59" class="base"/>
+<text x="44" y="81.0" class="rot" text-anchor="end">P2</text>
+<line x1="56" y1="93" x2="936" y2="93" class="base"/>
+<text x="44" y="115.0" class="rot" text-anchor="end">P3</text>
+<line x1="56" y1="127" x2="936" y2="127" class="base"/>
+<text x="44" y="149.0" class="rot" text-anchor="end">P4</text>
+<line x1="56" y1="161" x2="936" y2="161" class="base"/>
+<text x="44" y="183.0" class="rot" text-anchor="end">P5</text>
+<line x1="56" y1="195" x2="936" y2="195" class="base"/>
+<rect x="56.6" y="189" width="290.7" height="4" rx="2" class="faixa-coord"><title>P5 coordenador de 0.00s a 0.76s</title></rect>
+<rect x="932.8" y="155" width="2.8" height="4" rx="2" class="faixa-coord"><title>P4 coordenador de 2.29s a 2.30s</title></rect>
+<line x1="56.0" y1="12" x2="56.0" y2="202" class="marco"/>
+<line x1="347.1" y1="12" x2="347.1" y2="202" class="marco"/>
+<g class="falha"><title>P5 falhou em 0.76s</title><path d="M341.3,171.0 l12,12 M353.3,171.0 l-12,12"/></g>
+<g class="falha"><title>P4 falhou em 2.30s</title><path d="M929.6,137.0 l12,12 M941.6,137.0 l-12,12"/></g>
+<g class="falha"><title>P3 falhou em 2.30s</title><path d="M929.8,103.0 l12,12 M941.8,103.0 l-12,12"/></g>
+<g class="falha"><title>P2 falhou em 2.30s</title><path d="M929.9,69.0 l12,12 M941.9,69.0 l-12,12"/></g>
+<g class="falha"><title>P1 falhou em 2.30s</title><path d="M930.0,35.0 l12,12 M942.0,35.0 l-12,12"/></g>
+</svg></div>
+<ul class="legenda"><li><span class="amostra" style="background: var(--coord); height: 4px"></span>coordenador</li></ul>
+<ul class='legenda' style='display:block'><li><b>0.00s</b> — Sobem P5 (coordenador) e P1..P4</li><li><b>0.76s</b> — P5 falha; P1, P2 e P3 iniciam eleições ao mesmo tempo</li></ul>
+</section>
+
+<section>
+<h2>2. Diagrama de sequência</h2>
+<p>O tempo corre para baixo; cada linha é um evento (o espaçamento não é proporcional ao tempo).
+Raia grossa verde = processo dentro da RC; raia roxa = processo que se considera coordenador.
+Setas tracejadas com ✕ são mensagens que não chegaram (destino caído). PING/PONG foram omitidos.</p>
+<div class="rolagem"><svg viewBox="0 0 1022 942" class="seq" role="img" aria-label="Diagrama de sequência">
+<defs>
+<marker id="m-REQUEST" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-REQUEST"/></marker>
+<marker id="m-GRANT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-GRANT"/></marker>
+<marker id="m-RELEASE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-RELEASE"/></marker>
+<marker id="m-ELECTION" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-ELECTION"/></marker>
+<marker id="m-ANSWER" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-ANSWER"/></marker>
+<marker id="m-COORDINATOR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-COORDINATOR"/></marker>
+<marker id="m-ACK" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-ACK"/></marker>
+<marker id="m-PING" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-PING"/></marker>
+<marker id="m-PONG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-PONG"/></marker>
+</defs>
+<text x="158" y="22" class="cab" text-anchor="middle">P1</text>
+<line x1="158" y1="224" x2="158" y2="872" class="raia"/>
+<text x="290" y="22" class="cab" text-anchor="middle">P2</text>
+<line x1="290" y1="128" x2="290" y2="848" class="raia"/>
+<text x="422" y="22" class="cab" text-anchor="middle">P3</text>
+<line x1="422" y1="104" x2="422" y2="824" class="raia"/>
+<text x="554" y="22" class="cab" text-anchor="middle">P4</text>
+<line x1="554" y1="80" x2="554" y2="704" class="raia"/>
+<line x1="554" y1="704" x2="554" y2="800" class="raia-coord"/>
+<text x="686" y="22" class="cab" text-anchor="middle">P5</text>
+<line x1="686" y1="56" x2="686" y2="272" class="raia-coord"/>
+<text x="8" y="48" class="tempo">  0.000s</text>
+<line x1="82" y1="44" x2="1018" y2="44" class="marco"/>
+<text x="92" y="39" class="nota">Sobem P5 (coordenador) e P1..P4</text>
+<text x="8" y="72" class="tempo">  0.002s</text>
+<text x="686" y="73" class="ev" text-anchor="middle">◆</text>
+<text x="698" y="72" class="desc">P5 iniciado (coordenador presumido: P5)</text>
+<text x="8" y="96" class="tempo">  0.154s</text>
+<text x="554" y="97" class="ev" text-anchor="middle">◆</text>
+<text x="566" y="96" class="desc">P4 iniciado (coordenador presumido: P5)</text>
+<text x="8" y="120" class="tempo">  0.307s</text>
+<text x="422" y="121" class="ev" text-anchor="middle">◆</text>
+<text x="434" y="120" class="desc">P3 iniciado (coordenador presumido: P5)</text>
+<text x="8" y="144" class="tempo">  0.459s</text>
+<text x="290" y="145" class="ev" text-anchor="middle">◆</text>
+<text x="302" y="144" class="desc">P2 iniciado (coordenador presumido: P5)</text>
+<text x="8" y="168" class="tempo">  0.514s</text>
+<g><title>P5 -&gt; P4: COORDINATOR</title><line x1="680" y1="164" x2="561" y2="164" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="620" y="160" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="192" class="tempo">  0.514s</text>
+<g><title>P5 -&gt; P3: COORDINATOR</title><line x1="680" y1="188" x2="429" y2="188" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="554" y="184" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="216" class="tempo">  0.514s</text>
+<g><title>P5 -&gt; P2: COORDINATOR</title><line x1="680" y1="212" x2="297" y2="212" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="488" y="208" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="240" class="tempo">  0.611s</text>
+<text x="158" y="241" class="ev" text-anchor="middle">◆</text>
+<text x="170" y="240" class="desc">P1 iniciado (coordenador presumido: P5)</text>
+<text x="8" y="264" class="tempo">  0.761s</text>
+<line x1="82" y1="260" x2="1018" y2="260" class="marco"/>
+<text x="92" y="255" class="nota">P5 falha; P1, P2 e P3 iniciam eleições ao mesmo tempo</text>
+<text x="8" y="288" class="tempo">  0.762s</text>
+<text x="686" y="289" class="ev-falha" text-anchor="middle">✖</text>
+<text x="698" y="288" class="desc">P5 encerrado (falha)</text>
+<text x="8" y="312" class="tempo">  0.766s</text>
+<g><title>P1 -&gt; P2: ELECTION</title><line x1="164" y1="308" x2="283" y2="308" class="seta t-ELECTION" marker-end="url(#m-ELECTION)"/>
+<text x="224" y="304" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="336" class="tempo">  0.768s</text>
+<g><title>P1 -&gt; P3: ELECTION</title><line x1="164" y1="332" x2="415" y2="332" class="seta t-ELECTION" marker-end="url(#m-ELECTION)"/>
+<text x="290" y="328" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="360" class="tempo">  0.770s</text>
+<g><title>P2 -&gt; P3: ELECTION</title><line x1="296" y1="356" x2="415" y2="356" class="seta t-ELECTION" marker-end="url(#m-ELECTION)"/>
+<text x="356" y="352" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="384" class="tempo">  0.775s</text>
+<g><title>P1 -&gt; P4: ELECTION</title><line x1="164" y1="380" x2="547" y2="380" class="seta t-ELECTION" marker-end="url(#m-ELECTION)"/>
+<text x="356" y="376" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="408" class="tempo">  0.776s</text>
+<g><title>P2 -&gt; P4: ELECTION</title><line x1="296" y1="404" x2="547" y2="404" class="seta t-ELECTION" marker-end="url(#m-ELECTION)"/>
+<text x="422" y="400" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="432" class="tempo">  0.777s</text>
+<g><title>P3 -&gt; P1: ANSWER</title><line x1="416" y1="428" x2="165" y2="428" class="seta t-ANSWER" marker-end="url(#m-ANSWER)"/>
+<text x="290" y="424" class="rot-msg" text-anchor="middle">ANSWER</text></g>
+<text x="8" y="456" class="tempo">  0.777s</text>
+<g><title>P2 -&gt; P1: ANSWER</title><line x1="284" y1="452" x2="165" y2="452" class="seta t-ANSWER" marker-end="url(#m-ANSWER)"/>
+<text x="224" y="448" class="rot-msg" text-anchor="middle">ANSWER</text></g>
+<text x="8" y="480" class="tempo">  0.783s</text>
+<g><title>P3 -&gt; P4: ELECTION</title><line x1="428" y1="476" x2="547" y2="476" class="seta t-ELECTION" marker-end="url(#m-ELECTION)"/>
+<text x="488" y="472" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="504" class="tempo">  0.785s</text>
+<g><title>P4 -&gt; P1: ANSWER</title><line x1="548" y1="500" x2="165" y2="500" class="seta t-ANSWER" marker-end="url(#m-ANSWER)"/>
+<text x="356" y="496" class="rot-msg" text-anchor="middle">ANSWER</text></g>
+<text x="8" y="528" class="tempo">  0.786s</text>
+<g><title>P3 -&gt; P2: ANSWER</title><line x1="416" y1="524" x2="297" y2="524" class="seta t-ANSWER" marker-end="url(#m-ANSWER)"/>
+<text x="356" y="520" class="rot-msg" text-anchor="middle">ANSWER</text></g>
+<text x="8" y="552" class="tempo">  0.789s</text>
+<g><title>P4 -&gt; P2: ANSWER</title><line x1="548" y1="548" x2="297" y2="548" class="seta t-ANSWER" marker-end="url(#m-ANSWER)"/>
+<text x="422" y="544" class="rot-msg" text-anchor="middle">ANSWER</text></g>
+<text x="8" y="576" class="tempo">  0.794s</text>
+<g><title>P4 -&gt; P3: ANSWER</title><line x1="548" y1="572" x2="429" y2="572" class="seta t-ANSWER" marker-end="url(#m-ANSWER)"/>
+<text x="488" y="568" class="rot-msg" text-anchor="middle">ANSWER</text></g>
+<text x="8" y="600" class="tempo">  1.019s</text>
+<g><title>P5 -&gt; P1: COORDINATOR</title><line x1="680" y1="596" x2="165" y2="596" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="422" y="592" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="624" class="tempo">  2.292s</text>
+<g><title>P3 -&gt; P5: ELECTION (inalcançável)</title><line x1="428" y1="620" x2="674" y2="620" class="seta t-ELECTION falhou"/>
+<path d="M681,615 l10,10 M691,615 l-10,10" class="xis"/>
+<text x="554" y="616" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="648" class="tempo">  2.292s</text>
+<g><title>P2 -&gt; P5: ELECTION (inalcançável)</title><line x1="296" y1="644" x2="674" y2="644" class="seta t-ELECTION falhou"/>
+<path d="M681,639 l10,10 M691,639 l-10,10" class="xis"/>
+<text x="488" y="640" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="672" class="tempo">  2.292s</text>
+<g><title>P1 -&gt; P5: ELECTION (inalcançável)</title><line x1="164" y1="668" x2="674" y2="668" class="seta t-ELECTION falhou"/>
+<path d="M681,663 l10,10 M691,663 l-10,10" class="xis"/>
+<text x="422" y="664" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="696" class="tempo">  2.292s</text>
+<g><title>P4 -&gt; P5: ELECTION (inalcançável)</title><line x1="560" y1="692" x2="674" y2="692" class="seta t-ELECTION falhou"/>
+<path d="M681,687 l10,10 M691,687 l-10,10" class="xis"/>
+<text x="620" y="688" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="720" class="tempo">  2.293s</text>
+<text x="554" y="721" class="ev-coord" text-anchor="middle">★</text>
+<text x="566" y="720" class="desc">P4 assume a coordenação</text>
+<text x="8" y="744" class="tempo">  2.295s</text>
+<g><title>P4 -&gt; P1: COORDINATOR</title><line x1="548" y1="740" x2="165" y2="740" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="356" y="736" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="768" class="tempo">  2.296s</text>
+<g><title>P4 -&gt; P2: COORDINATOR</title><line x1="548" y1="764" x2="297" y2="764" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="422" y="760" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="792" class="tempo">  2.297s</text>
+<g><title>P4 -&gt; P3: COORDINATOR</title><line x1="548" y1="788" x2="429" y2="788" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="488" y="784" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="816" class="tempo">  2.300s</text>
+<text x="554" y="817" class="ev-falha" text-anchor="middle">✖</text>
+<text x="566" y="816" class="desc">P4 encerrado (falha)</text>
+<text x="8" y="840" class="tempo">  2.301s</text>
+<text x="422" y="841" class="ev-falha" text-anchor="middle">✖</text>
+<text x="434" y="840" class="desc">P3 encerrado (falha)</text>
+<text x="8" y="864" class="tempo">  2.301s</text>
+<text x="290" y="865" class="ev-falha" text-anchor="middle">✖</text>
+<text x="302" y="864" class="desc">P2 encerrado (falha)</text>
+<text x="8" y="888" class="tempo">  2.301s</text>
+<text x="158" y="889" class="ev-falha" text-anchor="middle">✖</text>
+<text x="170" y="888" class="desc">P1 encerrado (falha)</text>
+</svg></div>
+<ul class="legenda"><li><span class="traco" style="border-color: var(--m-REQUEST)"></span>REQUEST</li><li><span class="traco" style="border-color: var(--m-GRANT)"></span>GRANT</li><li><span class="traco" style="border-color: var(--m-RELEASE)"></span>RELEASE</li><li><span class="traco" style="border-color: var(--m-ELECTION)"></span>ELECTION</li><li><span class="traco" style="border-color: var(--m-ANSWER)"></span>ANSWER</li><li><span class="traco" style="border-color: var(--m-COORDINATOR)"></span>COORDINATOR</li><li><span class="traco" style="border-color: var(--m-ACK)"></span>ACK</li></ul>
+</section>
+
+<section>
+<h2>3. Acessos à região crítica</h2>
+<div class="rolagem"><table>
+<thead><tr><th>#</th><th>Processo</th><th>Autorizado por</th><th>Mensagem</th><th>Entrada</th><th>Saída</th><th>Duração</th></tr></thead>
+<tbody></tbody></table></div>
+</section>
+</main>
+</body>
+</html>

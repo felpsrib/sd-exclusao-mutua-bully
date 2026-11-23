@@ -1,0 +1,7 @@
+# Versões mínimas testadas. Sem pino exato para funcionar também no
+# Python 3.12/3.13 (as versões antigas de grpcio não têm pacote para eles).
+grpcio>=1.62
+grpcio-tools>=1.62
+protobuf>=4.25
+pytest>=8.0
+pytest-timeout>=2.2

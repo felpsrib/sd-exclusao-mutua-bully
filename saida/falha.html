@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cenário 2 — falha do coordenador</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f3ef; --surface: #fcfcfb; --texto: #0b0b0b; --texto2: #52514e; --mudo: #8a8984;
+  --grade: #e6e5e0; --raia: #b9b8b2; --rc: #008300; --coord: #6250d6; --falha: #e34948;
+  --m-REQUEST: #2a78d6;
+  --m-GRANT: #008300;
+  --m-RELEASE: #1baf7a;
+  --m-ELECTION: #eb6834;
+  --m-ANSWER: #eda100;
+  --m-COORDINATOR: #6250d6;
+  --m-ACK: #e87ba4;
+  --m-PING: #8a8984;
+  --m-PONG: #8a8984;
+  --c0: #2a78d6;
+  --c1: #eb6834;
+  --c2: #1baf7a;
+  --c3: #6250d6;
+  --c4: #e87ba4;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --texto: #f0efec; --texto2: #c3c2b7; --mudo: #8a897f;
+  --grade: #2e2d2a; --raia: #5f5e58; --rc: #2f9e2f; --coord: #9085e9; --falha: #e66767;
+  --m-REQUEST: #3987e5;
+  --m-GRANT: #2f9e2f;
+  --m-RELEASE: #199e70;
+  --m-ELECTION: #d95926;
+  --m-ANSWER: #c98500;
+  --m-COORDINATOR: #9085e9;
+  --m-ACK: #d55181;
+  --m-PING: #77766f;
+  --m-PONG: #77766f;
+  --c0: #3987e5;
+  --c1: #d95926;
+  --c2: #199e70;
+  --c3: #9085e9;
+  --c4: #d55181;
+} }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #121211; --surface: #1a1a19; --texto: #f0efec; --texto2: #c3c2b7; --mudo: #8a897f;
+  --grade: #2e2d2a; --raia: #5f5e58; --rc: #2f9e2f; --coord: #9085e9; --falha: #e66767;
+  --m-REQUEST: #3987e5;
+  --m-GRANT: #2f9e2f;
+  --m-RELEASE: #199e70;
+  --m-ELECTION: #d95926;
+  --m-ANSWER: #c98500;
+  --m-COORDINATOR: #9085e9;
+  --m-ACK: #d55181;
+  --m-PING: #77766f;
+  --m-PONG: #77766f;
+  --c0: #3987e5;
+  --c1: #d95926;
+  --c2: #199e70;
+  --c3: #9085e9;
+  --c4: #d55181;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--texto);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 1120px; margin: 0 auto; padding: 28px 16px 60px; }
+h1 { font-size: 1.6rem; margin: 0 0 4px; }
+h2 { font-size: 1.1rem; margin: 0 0 6px; }
+.sub { color: var(--texto2); margin: 0 0 22px; max-width: 75ch; }
+section { background: var(--surface); border-radius: 12px; padding: 18px 18px 14px;
+  margin-bottom: 18px; box-shadow: 0 1px 2px rgb(0 0 0 / .06); }
+section > p { color: var(--texto2); margin: 0 0 12px; font-size: .92rem; max-width: 80ch; }
+.rolagem { overflow-x: auto; }
+svg { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+svg.gantt { width: 100%; min-width: 640px; }
+svg.seq { min-width: 100%; }
+.grade { stroke: var(--grade); }
+.base { stroke: var(--grade); }
+.eixo, .tempo { fill: var(--mudo); font-size: 11px; }
+.rot, .cab { fill: var(--texto); font-size: 13px; font-weight: 600; }
+.rot-barra { fill: #fff; font-size: 11px; font-weight: 600; pointer-events: none; }
+.faixa-coord { fill: var(--coord); opacity: .55; }
+.falha path, .xis { stroke: var(--falha); stroke-width: 2.5; stroke-linecap: round; fill: none; }
+.marco { stroke: var(--texto2); stroke-dasharray: 3 4; }
+.raia { stroke: var(--raia); stroke-width: 1.5; }
+.raia-coord { stroke: var(--coord); stroke-width: 3.5; }
+.raia-rc { fill: var(--rc); }
+.seta { stroke-width: 2; fill: none; }
+.seta.falhou { stroke-dasharray: 5 4; opacity: .75; }
+.rot-msg { fill: var(--texto2); font-size: 10.5px; }
+.desc { fill: var(--texto2); font-size: 11px; }
+.ev { fill: var(--texto); font-size: 13px; }
+.ev-falha { fill: var(--falha); font-size: 14px; }
+.ev-coord { fill: var(--coord); font-size: 15px; }
+.nota { fill: var(--texto); font-size: 12px; font-weight: 700; font-family: system-ui, sans-serif; }
+.t-REQUEST { stroke: var(--m-REQUEST); } .ponta.t-REQUEST { fill: var(--m-REQUEST); stroke: none; }
+.t-GRANT { stroke: var(--m-GRANT); } .ponta.t-GRANT { fill: var(--m-GRANT); stroke: none; }
+.t-RELEASE { stroke: var(--m-RELEASE); } .ponta.t-RELEASE { fill: var(--m-RELEASE); stroke: none; }
+.t-ELECTION { stroke: var(--m-ELECTION); } .ponta.t-ELECTION { fill: var(--m-ELECTION); stroke: none; }
+.t-ANSWER { stroke: var(--m-ANSWER); } .ponta.t-ANSWER { fill: var(--m-ANSWER); stroke: none; }
+.t-COORDINATOR { stroke: var(--m-COORDINATOR); } .ponta.t-COORDINATOR { fill: var(--m-COORDINATOR); stroke: none; }
+.t-ACK { stroke: var(--m-ACK); } .ponta.t-ACK { fill: var(--m-ACK); stroke: none; }
+.t-PING { stroke: var(--m-PING); } .ponta.t-PING { fill: var(--m-PING); stroke: none; }
+.t-PONG { stroke: var(--m-PONG); } .ponta.t-PONG { fill: var(--m-PONG); stroke: none; }
+.rc.c0 { fill: var(--c0); } .leg-c0 { background: var(--c0); }
+.rc.c1 { fill: var(--c1); } .leg-c1 { background: var(--c1); }
+.rc.c2 { fill: var(--c2); } .leg-c2 { background: var(--c2); }
+.rc.c3 { fill: var(--c3); } .leg-c3 { background: var(--c3); }
+.rc.c4 { fill: var(--c4); } .leg-c4 { background: var(--c4); }
+.legenda { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .85rem; color: var(--texto2);
+  margin: 10px 0 0; padding: 0; list-style: none; }
+.legenda li { display: flex; align-items: center; gap: 6px; }
+.amostra { width: 16px; height: 10px; border-radius: 3px; display: inline-block; }
+.traco { width: 20px; height: 0; border-top: 2px solid; display: inline-block; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--grade); }
+th { color: var(--texto2); font-weight: 600; }
+td.num { font-variant-numeric: tabular-nums; }
+.veredito { font-weight: 600; }
+.veredito.ok { color: var(--rc); }
+.veredito.erro { color: var(--falha); }
+</style>
+</head>
+<body>
+<main>
+<h1>Cenário 2 — falha do coordenador</h1>
+<p class="sub">P5 cai enquanto P1 está na RC e P3, P4 estão na fila. O heartbeat detecta a queda, o Algoritmo do Valentão elege P4 e os clientes refazem o pedido ao novo coordenador. P1, que estava na RC, é reconhecido por P4 (ACK com NA_RC).</p>
+
+<section>
+<h2>1. Quem esteve na região crítica, e quando</h2>
+<p>Cada barra é um acesso à RC; a cor indica o coordenador que o autorizou. A faixa fina
+sob a linha mostra o período em que o processo se considerou coordenador; ✕ marca uma falha.
+Passe o mouse sobre as barras para ver os tempos.</p>
+<p class="veredito ok">✔ Nenhuma sobreposição: no máximo um processo esteve na RC em cada instante.</p>
+<div class="rolagem"><svg viewBox="0 0 956 230" class="gantt" role="img" aria-label="Linha do tempo da região crítica">
+<line x1="56.0" y1="20" x2="56.0" y2="202" class="grade"/>
+<text x="56.0" y="218" class="eixo" text-anchor="middle">0s</text>
+<line x1="216.7" y1="20" x2="216.7" y2="202" class="grade"/>
+<text x="216.7" y="218" class="eixo" text-anchor="middle">5s</text>
+<line x1="377.4" y1="20" x2="377.4" y2="202" class="grade"/>
+<text x="377.4" y="218" class="eixo" text-anchor="middle">10s</text>
+<line x1="538.2" y1="20" x2="538.2" y2="202" class="grade"/>
+<text x="538.2" y="218" class="eixo" text-anchor="middle">15s</text>
+<line x1="698.9" y1="20" x2="698.9" y2="202" class="grade"/>
+<text x="698.9" y="218" class="eixo" text-anchor="middle">20s</text>
+<line x1="859.6" y1="20" x2="859.6" y2="202" class="grade"/>
+<text x="859.6" y="218" class="eixo" text-anchor="middle">25s</text>
+<text x="44" y="47.0" class="rot" text-anchor="end">P1</text>
+<line x1="56" y1="59" x2="936" y2="59" class="base"/>
+<text x="44" y="81.0" class="rot" text-anchor="end">P2</text>
+<line x1="56" y1="93" x2="936" y2="93" class="base"/>
+<text x="44" y="115.0" class="rot" text-anchor="end">P3</text>
+<line x1="56" y1="127" x2="936" y2="127" class="base"/>
+<text x="44" y="149.0" class="rot" text-anchor="end">P4</text>
+<line x1="56" y1="161" x2="936" y2="161" class="base"/>
+<text x="44" y="183.0" class="rot" text-anchor="end">P5</text>
+<line x1="56" y1="195" x2="936" y2="195" class="base"/>
+<rect x="56.1" y="189" width="212.0" height="4" rx="2" class="faixa-coord"><title>P5 coordenador de 0.00s a 6.60s</title></rect>
+<rect x="386.5" y="155" width="549.5" height="4" rx="2" class="faixa-coord"><title>P4 coordenador de 10.28s a 27.38s</title></rect>
+<rect x="89.9" y="65" width="161.8" height="19" rx="4" class="rc c0"><title>P2 na RC de 1.06s a 6.09s (5.03s), autorizado por P5</title></rect>
+<text x="170.8" y="78.0" class="rot-barra" text-anchor="middle">P5</text>
+<rect x="251.9" y="31" width="161.3" height="19" rx="4" class="rc c0"><title>P1 na RC de 6.10s a 11.11s (5.02s), autorizado por P5</title></rect>
+<text x="332.6" y="44.0" class="rot-barra" text-anchor="middle">P5</text>
+<rect x="451.5" y="99" width="161.4" height="19" rx="4" class="rc c1"><title>P3 na RC de 12.30s a 17.32s (5.02s), autorizado por P4</title></rect>
+<text x="532.2" y="112.0" class="rot-barra" text-anchor="middle">P4</text>
+<rect x="613.0" y="133" width="161.4" height="19" rx="4" class="rc c1"><title>P4 na RC de 17.33s a 22.35s (5.02s), autorizado por P4</title></rect>
+<text x="693.7" y="146.0" class="rot-barra" text-anchor="middle">P4</text>
+<rect x="774.6" y="65" width="161.3" height="19" rx="4" class="rc c1"><title>P2 na RC de 22.35s a 27.37s (5.02s), autorizado por P4</title></rect>
+<text x="855.2" y="78.0" class="rot-barra" text-anchor="middle">P4</text>
+<line x1="56.0" y1="12" x2="56.0" y2="202" class="marco"/>
+<line x1="80.5" y1="12" x2="80.5" y2="202" class="marco"/>
+<line x1="251.8" y1="12" x2="251.8" y2="202" class="marco"/>
+<line x1="268.0" y1="12" x2="268.0" y2="202" class="marco"/>
+<g class="falha"><title>P5 falhou em 6.60s</title><path d="M262.0,171.0 l12,12 M274.0,171.0 l-12,12"/></g>
+<line x1="387.1" y1="12" x2="387.1" y2="202" class="marco"/>
+<line x1="774.4" y1="12" x2="774.4" y2="202" class="marco"/>
+<line x1="935.9" y1="12" x2="935.9" y2="202" class="marco"/>
+<g class="falha"><title>P4 falhou em 27.38s</title><path d="M930.0,137.0 l12,12 M942.0,137.0 l-12,12"/></g>
+<g class="falha"><title>P3 falhou em 27.38s</title><path d="M930.0,103.0 l12,12 M942.0,103.0 l-12,12"/></g>
+<g class="falha"><title>P2 falhou em 27.38s</title><path d="M930.0,69.0 l12,12 M942.0,69.0 l-12,12"/></g>
+<g class="falha"><title>P1 falhou em 27.38s</title><path d="M930.0,35.0 l12,12 M942.0,35.0 l-12,12"/></g>
+</svg></div>
+<ul class="legenda"><li><span class="amostra leg-c0"></span>autorizado por P5</li><li><span class="amostra leg-c1"></span>autorizado por P4</li><li><span class="amostra" style="background: var(--coord); height: 4px"></span>coordenador</li></ul>
+<ul class='legenda' style='display:block'><li><b>0.00s</b> — Sobem P5 (coordenador) e os clientes P1..P4</li><li><b>0.76s</b> — P2 acessa a RC normalmente, autorizado por P5</li><li><b>6.09s</b> — P1 entra na RC; P3 e P4 ficam na fila de P5</li><li><b>6.60s</b> — P5 FALHA (com P1 dentro da RC e P3, P4 na fila)</li><li><b>10.30s</b> — Heartbeat detectou e o Valentão elegeu P4 (3.7s após a falha)</li><li><b>22.35s</b> — P2 volta a pedir a RC, agora a P4</li><li><b>27.37s</b> — Conferência</li></ul>
+</section>
+
+<section>
+<h2>2. Diagrama de sequência</h2>
+<p>O tempo corre para baixo; cada linha é um evento (o espaçamento não é proporcional ao tempo).
+Raia grossa verde = processo dentro da RC; raia roxa = processo que se considera coordenador.
+Setas tracejadas com ✕ são mensagens que não chegaram (destino caído). PING/PONG foram omitidos.</p>
+<div class="rolagem"><svg viewBox="0 0 1022 1782" class="seq" role="img" aria-label="Diagrama de sequência">
+<defs>
+<marker id="m-REQUEST" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-REQUEST"/></marker>
+<marker id="m-GRANT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-GRANT"/></marker>
+<marker id="m-RELEASE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-RELEASE"/></marker>
+<marker id="m-ELECTION" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-ELECTION"/></marker>
+<marker id="m-ANSWER" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-ANSWER"/></marker>
+<marker id="m-COORDINATOR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-COORDINATOR"/></marker>
+<marker id="m-ACK" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-ACK"/></marker>
+<marker id="m-PING" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-PING"/></marker>
+<marker id="m-PONG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ponta t-PONG"/></marker>
+</defs>
+<text x="158" y="22" class="cab" text-anchor="middle">P1</text>
+<line x1="158" y1="224" x2="158" y2="488" class="raia"/>
+<rect x="153" y="488" width="10" height="768" rx="4" class="raia-rc"/>
+<line x1="158" y1="1256" x2="158" y2="1712" class="raia"/>
+<text x="290" y="22" class="cab" text-anchor="middle">P2</text>
+<line x1="290" y1="128" x2="290" y2="344" class="raia"/>
+<rect x="285" y="344" width="10" height="24" rx="4" class="raia-rc"/>
+<line x1="290" y1="368" x2="290" y2="1544" class="raia"/>
+<rect x="285" y="1544" width="10" height="24" rx="4" class="raia-rc"/>
+<line x1="290" y1="1568" x2="290" y2="1688" class="raia"/>
+<text x="422" y="22" class="cab" text-anchor="middle">P3</text>
+<line x1="422" y1="104" x2="422" y2="1352" class="raia"/>
+<rect x="417" y="1352" width="10" height="24" rx="4" class="raia-rc"/>
+<line x1="422" y1="1376" x2="422" y2="1664" class="raia"/>
+<text x="554" y="22" class="cab" text-anchor="middle">P4</text>
+<line x1="554" y1="80" x2="554" y2="1088" class="raia"/>
+<line x1="554" y1="1088" x2="554" y2="1424" class="raia-coord"/>
+<rect x="549" y="1424" width="10" height="24" rx="4" class="raia-rc"/>
+<line x1="554" y1="1448" x2="554" y2="1640" class="raia-coord"/>
+<text x="686" y="22" class="cab" text-anchor="middle">P5</text>
+<line x1="686" y1="56" x2="686" y2="584" class="raia-coord"/>
+<text x="8" y="48" class="tempo">  0.000s</text>
+<line x1="82" y1="44" x2="1018" y2="44" class="marco"/>
+<text x="92" y="39" class="nota">Sobem P5 (coordenador) e os clientes P1..P4</text>
+<text x="8" y="72" class="tempo">  0.002s</text>
+<text x="686" y="73" class="ev" text-anchor="middle">◆</text>
+<text x="698" y="72" class="desc">P5 iniciado (coordenador presumido: P5)</text>
+<text x="8" y="96" class="tempo">  0.155s</text>
+<text x="554" y="97" class="ev" text-anchor="middle">◆</text>
+<text x="566" y="96" class="desc">P4 iniciado (coordenador presumido: P5)</text>
+<text x="8" y="120" class="tempo">  0.307s</text>
+<text x="422" y="121" class="ev" text-anchor="middle">◆</text>
+<text x="434" y="120" class="desc">P3 iniciado (coordenador presumido: P5)</text>
+<text x="8" y="144" class="tempo">  0.459s</text>
+<text x="290" y="145" class="ev" text-anchor="middle">◆</text>
+<text x="302" y="144" class="desc">P2 iniciado (coordenador presumido: P5)</text>
+<text x="8" y="168" class="tempo">  0.538s</text>
+<g><title>P5 -&gt; P2: COORDINATOR</title><line x1="680" y1="164" x2="297" y2="164" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="488" y="160" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="192" class="tempo">  0.539s</text>
+<g><title>P5 -&gt; P3: COORDINATOR</title><line x1="680" y1="188" x2="429" y2="188" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="554" y="184" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="216" class="tempo">  0.539s</text>
+<g><title>P5 -&gt; P4: COORDINATOR</title><line x1="680" y1="212" x2="561" y2="212" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="620" y="208" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="240" class="tempo">  0.611s</text>
+<text x="158" y="241" class="ev" text-anchor="middle">◆</text>
+<text x="170" y="240" class="desc">P1 iniciado (coordenador presumido: P5)</text>
+<text x="8" y="264" class="tempo">  0.761s</text>
+<line x1="82" y1="260" x2="1018" y2="260" class="marco"/>
+<text x="92" y="255" class="nota">P2 acessa a RC normalmente, autorizado por P5</text>
+<text x="8" y="288" class="tempo">  0.787s</text>
+<g><title>P2 -&gt; P5: REQUEST</title><line x1="296" y1="284" x2="679" y2="284" class="seta t-REQUEST" marker-end="url(#m-REQUEST)"/>
+<text x="488" y="280" class="rot-msg" text-anchor="middle">REQUEST</text></g>
+<text x="8" y="312" class="tempo">  1.041s</text>
+<g><title>P5 -&gt; P1: COORDINATOR</title><line x1="680" y1="308" x2="165" y2="308" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="422" y="304" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="336" class="tempo">  1.055s</text>
+<g><title>P5 -&gt; P2: GRANT</title><line x1="680" y1="332" x2="297" y2="332" class="seta t-GRANT" marker-end="url(#m-GRANT)"/>
+<text x="488" y="328" class="rot-msg" text-anchor="middle">GRANT</text></g>
+<text x="8" y="360" class="tempo">  1.056s</text>
+<text x="290" y="361" class="ev" text-anchor="middle">▼</text>
+<text x="302" y="360" class="desc">P2 ENTRA na RC (autorizado por P5)</text>
+<text x="8" y="384" class="tempo">  6.090s</text>
+<text x="290" y="385" class="ev" text-anchor="middle">▲</text>
+<text x="302" y="384" class="desc">P2 SAI da RC</text>
+<text x="8" y="408" class="tempo">  6.091s</text>
+<g><title>P2 -&gt; P5: RELEASE</title><line x1="296" y1="404" x2="679" y2="404" class="seta t-RELEASE" marker-end="url(#m-RELEASE)"/>
+<text x="488" y="400" class="rot-msg" text-anchor="middle">RELEASE</text></g>
+<text x="8" y="432" class="tempo">  6.091s</text>
+<line x1="82" y1="428" x2="1018" y2="428" class="marco"/>
+<text x="92" y="423" class="nota">P1 entra na RC; P3 e P4 ficam na fila de P5</text>
+<text x="8" y="456" class="tempo">  6.093s</text>
+<g><title>P1 -&gt; P5: REQUEST</title><line x1="164" y1="452" x2="679" y2="452" class="seta t-REQUEST" marker-end="url(#m-REQUEST)"/>
+<text x="422" y="448" class="rot-msg" text-anchor="middle">REQUEST</text></g>
+<text x="8" y="480" class="tempo">  6.095s</text>
+<g><title>P5 -&gt; P1: GRANT</title><line x1="680" y1="476" x2="165" y2="476" class="seta t-GRANT" marker-end="url(#m-GRANT)"/>
+<text x="422" y="472" class="rot-msg" text-anchor="middle">GRANT</text></g>
+<text x="8" y="504" class="tempo">  6.096s</text>
+<text x="158" y="505" class="ev" text-anchor="middle">▼</text>
+<text x="170" y="504" class="desc">P1 ENTRA na RC (autorizado por P5)</text>
+<text x="8" y="528" class="tempo">  6.296s</text>
+<g><title>P3 -&gt; P5: REQUEST</title><line x1="428" y1="524" x2="679" y2="524" class="seta t-REQUEST" marker-end="url(#m-REQUEST)"/>
+<text x="554" y="520" class="rot-msg" text-anchor="middle">REQUEST</text></g>
+<text x="8" y="552" class="tempo">  6.296s</text>
+<g><title>P4 -&gt; P5: REQUEST</title><line x1="560" y1="548" x2="679" y2="548" class="seta t-REQUEST" marker-end="url(#m-REQUEST)"/>
+<text x="620" y="544" class="rot-msg" text-anchor="middle">REQUEST</text></g>
+<text x="8" y="576" class="tempo">  6.595s</text>
+<line x1="82" y1="572" x2="1018" y2="572" class="marco"/>
+<text x="92" y="567" class="nota">P5 FALHA (com P1 dentro da RC e P3, P4 na fila)</text>
+<text x="8" y="600" class="tempo">  6.596s</text>
+<text x="686" y="601" class="ev-falha" text-anchor="middle">✖</text>
+<text x="698" y="600" class="desc">P5 encerrado (falha)</text>
+<text x="8" y="624" class="tempo">  8.759s</text>
+<g><title>P1 -&gt; P5: PING (inalcançável)</title><line x1="164" y1="620" x2="674" y2="620" class="seta t-PING falhou"/>
+<path d="M681,615 l10,10 M691,615 l-10,10" class="xis"/>
+<text x="422" y="616" class="rot-msg" text-anchor="middle">PING</text></g>
+<text x="8" y="648" class="tempo">  8.762s</text>
+<g><title>P1 -&gt; P3: ELECTION</title><line x1="164" y1="644" x2="415" y2="644" class="seta t-ELECTION" marker-end="url(#m-ELECTION)"/>
+<text x="290" y="640" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="672" class="tempo">  8.763s</text>
+<g><title>P1 -&gt; P2: ELECTION</title><line x1="164" y1="668" x2="283" y2="668" class="seta t-ELECTION" marker-end="url(#m-ELECTION)"/>
+<text x="224" y="664" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="696" class="tempo">  8.764s</text>
+<g><title>P1 -&gt; P4: ELECTION</title><line x1="164" y1="692" x2="547" y2="692" class="seta t-ELECTION" marker-end="url(#m-ELECTION)"/>
+<text x="356" y="688" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="720" class="tempo">  8.767s</text>
+<g><title>P3 -&gt; P1: ANSWER</title><line x1="416" y1="716" x2="165" y2="716" class="seta t-ANSWER" marker-end="url(#m-ANSWER)"/>
+<text x="290" y="712" class="rot-msg" text-anchor="middle">ANSWER</text></g>
+<text x="8" y="744" class="tempo">  8.767s</text>
+<g><title>P2 -&gt; P1: ANSWER</title><line x1="284" y1="740" x2="165" y2="740" class="seta t-ANSWER" marker-end="url(#m-ANSWER)"/>
+<text x="224" y="736" class="rot-msg" text-anchor="middle">ANSWER</text></g>
+<text x="8" y="768" class="tempo">  8.769s</text>
+<g><title>P4 -&gt; P1: ANSWER</title><line x1="548" y1="764" x2="165" y2="764" class="seta t-ANSWER" marker-end="url(#m-ANSWER)"/>
+<text x="356" y="760" class="rot-msg" text-anchor="middle">ANSWER</text></g>
+<text x="8" y="792" class="tempo">  8.771s</text>
+<g><title>P3 -&gt; P4: ELECTION</title><line x1="428" y1="788" x2="547" y2="788" class="seta t-ELECTION" marker-end="url(#m-ELECTION)"/>
+<text x="488" y="784" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="816" class="tempo">  8.772s</text>
+<g><title>P2 -&gt; P3: ELECTION</title><line x1="296" y1="812" x2="415" y2="812" class="seta t-ELECTION" marker-end="url(#m-ELECTION)"/>
+<text x="356" y="808" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="840" class="tempo">  8.772s</text>
+<g><title>P2 -&gt; P4: ELECTION</title><line x1="296" y1="836" x2="547" y2="836" class="seta t-ELECTION" marker-end="url(#m-ELECTION)"/>
+<text x="422" y="832" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="864" class="tempo">  8.774s</text>
+<g><title>P3 -&gt; P2: ANSWER</title><line x1="416" y1="860" x2="297" y2="860" class="seta t-ANSWER" marker-end="url(#m-ANSWER)"/>
+<text x="356" y="856" class="rot-msg" text-anchor="middle">ANSWER</text></g>
+<text x="8" y="888" class="tempo">  8.775s</text>
+<g><title>P2 -&gt; P5: PING (inalcançável)</title><line x1="296" y1="884" x2="674" y2="884" class="seta t-PING falhou"/>
+<path d="M681,879 l10,10 M691,879 l-10,10" class="xis"/>
+<text x="488" y="880" class="rot-msg" text-anchor="middle">PING</text></g>
+<text x="8" y="912" class="tempo">  8.775s</text>
+<g><title>P4 -&gt; P3: ANSWER</title><line x1="548" y1="908" x2="429" y2="908" class="seta t-ANSWER" marker-end="url(#m-ANSWER)"/>
+<text x="488" y="904" class="rot-msg" text-anchor="middle">ANSWER</text></g>
+<text x="8" y="936" class="tempo">  8.776s</text>
+<g><title>P4 -&gt; P2: ANSWER</title><line x1="548" y1="932" x2="297" y2="932" class="seta t-ANSWER" marker-end="url(#m-ANSWER)"/>
+<text x="422" y="928" class="rot-msg" text-anchor="middle">ANSWER</text></g>
+<text x="8" y="960" class="tempo">  9.260s</text>
+<g><title>P4 -&gt; P5: PING (inalcançável)</title><line x1="560" y1="956" x2="674" y2="956" class="seta t-PING falhou"/>
+<path d="M681,951 l10,10 M691,951 l-10,10" class="xis"/>
+<text x="620" y="952" class="rot-msg" text-anchor="middle">PING</text></g>
+<text x="8" y="984" class="tempo">  9.480s</text>
+<g><title>P3 -&gt; P5: PING (inalcançável)</title><line x1="428" y1="980" x2="674" y2="980" class="seta t-PING falhou"/>
+<path d="M681,975 l10,10 M691,975 l-10,10" class="xis"/>
+<text x="554" y="976" class="rot-msg" text-anchor="middle">PING</text></g>
+<text x="8" y="1008" class="tempo"> 10.279s</text>
+<g><title>P2 -&gt; P5: ELECTION (inalcançável)</title><line x1="296" y1="1004" x2="674" y2="1004" class="seta t-ELECTION falhou"/>
+<path d="M681,999 l10,10 M691,999 l-10,10" class="xis"/>
+<text x="488" y="1000" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="1032" class="tempo"> 10.279s</text>
+<g><title>P1 -&gt; P5: ELECTION (inalcançável)</title><line x1="164" y1="1028" x2="674" y2="1028" class="seta t-ELECTION falhou"/>
+<path d="M681,1023 l10,10 M691,1023 l-10,10" class="xis"/>
+<text x="422" y="1024" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="1056" class="tempo"> 10.280s</text>
+<g><title>P3 -&gt; P5: ELECTION (inalcançável)</title><line x1="428" y1="1052" x2="674" y2="1052" class="seta t-ELECTION falhou"/>
+<path d="M681,1047 l10,10 M691,1047 l-10,10" class="xis"/>
+<text x="554" y="1048" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="1080" class="tempo"> 10.280s</text>
+<g><title>P4 -&gt; P5: ELECTION (inalcançável)</title><line x1="560" y1="1076" x2="674" y2="1076" class="seta t-ELECTION falhou"/>
+<path d="M681,1071 l10,10 M691,1071 l-10,10" class="xis"/>
+<text x="620" y="1072" class="rot-msg" text-anchor="middle">ELECTION</text></g>
+<text x="8" y="1104" class="tempo"> 10.280s</text>
+<text x="554" y="1105" class="ev-coord" text-anchor="middle">★</text>
+<text x="566" y="1104" class="desc">P4 assume a coordenação</text>
+<text x="8" y="1128" class="tempo"> 10.283s</text>
+<g><title>P4 -&gt; P1: COORDINATOR</title><line x1="548" y1="1124" x2="165" y2="1124" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="356" y="1120" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="1152" class="tempo"> 10.284s</text>
+<g><title>P4 -&gt; P2: COORDINATOR</title><line x1="548" y1="1148" x2="297" y2="1148" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="422" y="1144" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="1176" class="tempo"> 10.285s</text>
+<g><title>P1 -&gt; P4: ACK[NA_RC]</title><line x1="164" y1="1172" x2="547" y2="1172" class="seta t-ACK" marker-end="url(#m-ACK)"/>
+<text x="356" y="1168" class="rot-msg" text-anchor="middle">ACK [NA_RC]</text></g>
+<text x="8" y="1200" class="tempo"> 10.287s</text>
+<g><title>P4 -&gt; P3: COORDINATOR</title><line x1="548" y1="1196" x2="429" y2="1196" class="seta t-COORDINATOR" marker-end="url(#m-COORDINATOR)"/>
+<text x="488" y="1192" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="1224" class="tempo"> 10.299s</text>
+<line x1="82" y1="1220" x2="1018" y2="1220" class="marco"/>
+<text x="92" y="1215" class="nota">Heartbeat detectou e o Valentão elegeu P4 (3.7s após a falha)</text>
+<text x="8" y="1248" class="tempo"> 10.344s</text>
+<g><title>P3 -&gt; P4: REQUEST</title><line x1="428" y1="1244" x2="547" y2="1244" class="seta t-REQUEST" marker-end="url(#m-REQUEST)"/>
+<text x="488" y="1240" class="rot-msg" text-anchor="middle">REQUEST</text></g>
+<text x="8" y="1272" class="tempo"> 11.113s</text>
+<text x="158" y="1273" class="ev" text-anchor="middle">▲</text>
+<text x="170" y="1272" class="desc">P1 SAI da RC</text>
+<text x="8" y="1296" class="tempo"> 11.126s</text>
+<g><title>P1 -&gt; P4: RELEASE</title><line x1="164" y1="1292" x2="547" y2="1292" class="seta t-RELEASE" marker-end="url(#m-RELEASE)"/>
+<text x="356" y="1288" class="rot-msg" text-anchor="middle">RELEASE</text></g>
+<text x="8" y="1320" class="tempo"> 12.300s</text>
+<g><title>P4 -&gt; P5: COORDINATOR (inalcançável)</title><line x1="560" y1="1316" x2="674" y2="1316" class="seta t-COORDINATOR falhou"/>
+<path d="M681,1311 l10,10 M691,1311 l-10,10" class="xis"/>
+<text x="620" y="1312" class="rot-msg" text-anchor="middle">COORDINATOR</text></g>
+<text x="8" y="1344" class="tempo"> 12.302s</text>
+<g><title>P4 -&gt; P3: GRANT</title><line x1="548" y1="1340" x2="429" y2="1340" class="seta t-GRANT" marker-end="url(#m-GRANT)"/>
+<text x="488" y="1336" class="rot-msg" text-anchor="middle">GRANT</text></g>
+<text x="8" y="1368" class="tempo"> 12.303s</text>
+<text x="422" y="1369" class="ev" text-anchor="middle">▼</text>
+<text x="434" y="1368" class="desc">P3 ENTRA na RC (autorizado por P4)</text>
+<text x="8" y="1392" class="tempo"> 17.324s</text>
+<text x="422" y="1393" class="ev" text-anchor="middle">▲</text>
+<text x="434" y="1392" class="desc">P3 SAI da RC</text>
+<text x="8" y="1416" class="tempo"> 17.325s</text>
+<g><title>P3 -&gt; P4: RELEASE</title><line x1="428" y1="1412" x2="547" y2="1412" class="seta t-RELEASE" marker-end="url(#m-RELEASE)"/>
+<text x="488" y="1408" class="rot-msg" text-anchor="middle">RELEASE</text></g>
+<text x="8" y="1440" class="tempo"> 17.327s</text>
+<text x="554" y="1441" class="ev" text-anchor="middle">▼</text>
+<text x="566" y="1440" class="desc">P4 ENTRA na RC (autorizado por P4)</text>
+<text x="8" y="1464" class="tempo"> 22.348s</text>
+<text x="554" y="1465" class="ev" text-anchor="middle">▲</text>
+<text x="566" y="1464" class="desc">P4 SAI da RC</text>
+<text x="8" y="1488" class="tempo"> 22.349s</text>
+<line x1="82" y1="1484" x2="1018" y2="1484" class="marco"/>
+<text x="92" y="1479" class="nota">P2 volta a pedir a RC, agora a P4</text>
+<text x="8" y="1512" class="tempo"> 22.350s</text>
+<g><title>P2 -&gt; P4: REQUEST</title><line x1="296" y1="1508" x2="547" y2="1508" class="seta t-REQUEST" marker-end="url(#m-REQUEST)"/>
+<text x="422" y="1504" class="rot-msg" text-anchor="middle">REQUEST</text></g>
+<text x="8" y="1536" class="tempo"> 22.353s</text>
+<g><title>P4 -&gt; P2: GRANT</title><line x1="548" y1="1532" x2="297" y2="1532" class="seta t-GRANT" marker-end="url(#m-GRANT)"/>
+<text x="422" y="1528" class="rot-msg" text-anchor="middle">GRANT</text></g>
+<text x="8" y="1560" class="tempo"> 22.354s</text>
+<text x="290" y="1561" class="ev" text-anchor="middle">▼</text>
+<text x="302" y="1560" class="desc">P2 ENTRA na RC (autorizado por P4)</text>
+<text x="8" y="1584" class="tempo"> 27.372s</text>
+<text x="290" y="1585" class="ev" text-anchor="middle">▲</text>
+<text x="302" y="1584" class="desc">P2 SAI da RC</text>
+<text x="8" y="1608" class="tempo"> 27.373s</text>
+<g><title>P2 -&gt; P4: RELEASE</title><line x1="296" y1="1604" x2="547" y2="1604" class="seta t-RELEASE" marker-end="url(#m-RELEASE)"/>
+<text x="422" y="1600" class="rot-msg" text-anchor="middle">RELEASE</text></g>
+<text x="8" y="1632" class="tempo"> 27.374s</text>
+<line x1="82" y1="1628" x2="1018" y2="1628" class="marco"/>
+<text x="92" y="1623" class="nota">Conferência</text>
+<text x="8" y="1656" class="tempo"> 27.375s</text>
+<text x="554" y="1657" class="ev-falha" text-anchor="middle">✖</text>
+<text x="566" y="1656" class="desc">P4 encerrado (falha)</text>
+<text x="8" y="1680" class="tempo"> 27.375s</text>
+<text x="422" y="1681" class="ev-falha" text-anchor="middle">✖</text>
+<text x="434" y="1680" class="desc">P3 encerrado (falha)</text>
+<text x="8" y="1704" class="tempo"> 27.376s</text>
+<text x="290" y="1705" class="ev-falha" text-anchor="middle">✖</text>
+<text x="302" y="1704" class="desc">P2 encerrado (falha)</text>
+<text x="8" y="1728" class="tempo"> 27.376s</text>
+<text x="158" y="1729" class="ev-falha" text-anchor="middle">✖</text>
+<text x="170" y="1728" class="desc">P1 encerrado (falha)</text>
+</svg></div>
+<ul class="legenda"><li><span class="traco" style="border-color: var(--m-REQUEST)"></span>REQUEST</li><li><span class="traco" style="border-color: var(--m-GRANT)"></span>GRANT</li><li><span class="traco" style="border-color: var(--m-RELEASE)"></span>RELEASE</li><li><span class="traco" style="border-color: var(--m-ELECTION)"></span>ELECTION</li><li><span class="traco" style="border-color: var(--m-ANSWER)"></span>ANSWER</li><li><span class="traco" style="border-color: var(--m-COORDINATOR)"></span>COORDINATOR</li><li><span class="traco" style="border-color: var(--m-ACK)"></span>ACK</li></ul>
+</section>
+
+<section>
+<h2>3. Acessos à região crítica</h2>
+<div class="rolagem"><table>
+<thead><tr><th>#</th><th>Processo</th><th>Autorizado por</th><th>Mensagem</th><th>Entrada</th><th>Saída</th><th>Duração</th></tr></thead>
+<tbody><tr><td class='num'>1</td><td>P2</td><td>P5</td><td>antes-da-falha</td><td class='num'>1.056s</td><td class='num'>6.090s</td><td class='num'>5.03s</td></tr><tr><td class='num'>2</td><td>P1</td><td>P5</td><td>durante-a-falha</td><td class='num'>6.096s</td><td class='num'>11.113s</td><td class='num'>5.02s</td></tr><tr><td class='num'>3</td><td>P3</td><td>P4</td><td>na-fila-de-P5</td><td class='num'>12.303s</td><td class='num'>17.324s</td><td class='num'>5.02s</td></tr><tr><td class='num'>4</td><td>P4</td><td>P4</td><td>na-fila-de-P5</td><td class='num'>17.327s</td><td class='num'>22.348s</td><td class='num'>5.02s</td></tr><tr><td class='num'>5</td><td>P2</td><td>P4</td><td>apos-a-falha</td><td class='num'>22.354s</td><td class='num'>27.372s</td><td class='num'>5.02s</td></tr></tbody></table></div>
+</section>
+</main>
+</body>
+</html>

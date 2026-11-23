@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package log_service;
+
+// Serviço de log usado pelos processos ao ENTRAR e ao SAIR da região crítica.
+//
+// O servidor de log funciona como um "árbitro" externo: como recebe a
+// entrada e a saída de cada acesso, ele sabe quem está na RC a cada momento
+// e denuncia, em vermelho, qualquer violação de exclusão mútua.
+service LogService {
+  rpc RegistrarAcesso (AcessoRequest) returns (AcessoResponse);
+}
+
+enum TipoEvento {
+  ENTRADA = 0;   // o processo acabou de entrar na RC
+  SAIDA   = 1;   // o processo acabou de sair da RC
+}
+
+message AcessoRequest {
+  int32      process_id     = 1;  // ID do processo que entrou/saiu da RC
+  int32      coordenador_id = 2;  // ID do coordenador que concedeu o acesso
+  string     timestamp      = 3;  // instante do evento (ISO 8601, no processo)
+  string     mensagem       = 4;  // texto livre (ex.: "operacao-um")
+  TipoEvento evento         = 5;  // ENTRADA (padrão) ou SAIDA
+}
+
+message AcessoResponse {
+  bool   sucesso     = 1;
+  string confirmacao = 2;
+}
